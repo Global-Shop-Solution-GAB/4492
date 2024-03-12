@@ -1,0 +1,213 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Size(4935,1935)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form..Caption("Select Date Range")
+Gui.Form.dtpBegDate.Create(DatePicker)
+Gui.Form.dtpBegDate.Size(1935,285)
+Gui.Form.dtpBegDate.Position(270,510)
+Gui.Form.dtpEndDate.Create(DatePicker)
+Gui.Form.dtpEndDate.Size(1935,285)
+Gui.Form.dtpEndDate.Position(2520,525)
+Gui.Form.lbl1.Create(Label,"Beginning Date",True,1935,255,0,270,270,True,0,"Arial",8,-2147483633,0)
+Gui.Form.lbl2.Create(Label,"Ending Date",True,1935,255,0,2520,270,True,0,"Arial",8,-2147483633,0)
+Gui.Form.cmdOk.Create(Button)
+Gui.Form.cmdOk.Size(630,375)
+Gui.Form.cmdOk.Position(240,990)
+Gui.Form.cmdOk.Caption("OK")
+Gui.Form.cmdOk.Event(Click,cmdOk_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+v.Global..BulkDeclareString(sBegDate, sEndDate)
+
+V.Global..BulkDeclareLong(iBIRUNID,iBILogID)
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'BN Mar 20, 2017
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+gui.Form..Show
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4343_GrossMargin.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.cmdOk_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Form_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+f.Intrinsic.String.Format(v.Screen.Form!dtpBegDate.Value,"YYYY-MM-DD",v.Global.sBegDate)
+f.Intrinsic.String.Format(v.Screen.Form!dtpEndDate.Value,"YYYY-MM-DD",v.Global.sEndDate)
+
+gui.Form..Visible(False)
+f.Intrinsic.Control.CallSub(pre_proc)
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Form_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4492_Standard_Actual_Cost.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.cmdOk_Click.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("Pre_Proc_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+f.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Pre_Proc_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4492_Standard_Actual_Cost.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.Pre_Proc.Start
+
+
+F.Intrinsic.Control.SetErrorHandler("Pre_Proc_Err")
+F.Intrinsic.Control.ClearErrors
+
+v.Local..BulkDeclareString(sError, sSQL, sMap, sVal, sParam, sEstimated_Actual, sSQL_Act, sSQL_Material, sSQL_Labor, sSQL_Outside)
+v.Local..BulkDeclareLong(iCounter)
+v.Local.fHold.Declare(float,1)
+
+f.Intrinsic.UI.InvokeWaitDialog("Processing")
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+f.ODBC.Connection!con.Execute("Delete from GCG_4492_Std_Act_Cos")
+
+v.Local.sSQL.Set("select job, suffix, job+'-'+suffix as WorkOrder, part, description as Part_Description, location, qty_completed as Completed_Quantity, Qty_Order  from v_job_header")
+f.Intrinsic.String.Build("{0} {1} '{2}' and '{3}' ",v.Local.sSQL," where qty_completed > 0 and date_closed between ",v.Global.sBegDate, v.Global.sEndDate ,v.Local.sSQL)
+f.Data.DataTable.CreateFromSQL("Cost_DT","con",v.Local.sSQL,true)
+
+Function.Data.DataTable.AddColumn("Cost_DT", "Material_Variance", "float", 0)
+Function.Data.DataTable.AddColumn("Cost_DT", "Labor_Overhead_Var", "float", 0)
+Function.Data.DataTable.AddColumn("Cost_DT", "Outside_Variance", "float", 0)
+Function.Data.DataTable.AddColumn("Cost_DT", "Before_Run_Std", "float", 0)
+
+
+Function.Data.DataTable.AddExpressionColumn("Cost_DT", "Factor", "float", "IIF(Qty_Order <> 0, (Completed_Quantity)/Qty_Order, 1)")
+
+f.Intrinsic.Control.For(v.Local.iCounter,0,v.DataTable.Cost_DT.RowCount--,1)
+	
+	v.Local.sSQL.Set("select sum(DOLLARS_ESTIMATED) ")
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL," from V_JOB_Operations ",v.Local.sSQL)
+	f.Intrinsic.String.Build(" {0} where job = '{1}' and suffix = '{2}' and LMO != 'Z' ",v.Local.sSQL, Variable.DataTable.Cost_DT(v.Local.iCounter).Job!FieldValString,Variable.DataTable.Cost_DT(v.Local.iCounter).Suffix!FieldValString,v.Local.sSQL)
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL," group by job, suffix ",v.Local.sSQL)
+	f.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL, v.Local.sEstimated_Actual)	
+	f.Intrinsic.String.Split(v.Local.sEstimated_Actual,"*!*",v.Local.sEstimated_Actual)
+	Function.Data.DataTable.SetValue("Cost_DT", v.Local.iCounter,"Before_Run_Std", v.Local.sEstimated_Actual(0))
+
+	v.Local.sSQL_Act.Set("select sum(Dollars_Estimated), sum(DOLLARS_ACTUAL) from V_JOB_Operations ")
+	f.Intrinsic.String.Build(" {0} where job = '{1}' and suffix = '{2}'",v.Local.sSQL_Act, Variable.DataTable.Cost_DT(v.Local.iCounter).Job!FieldValString,Variable.DataTable.Cost_DT(v.Local.iCounter).Suffix!FieldValString,v.Local.sSQL_Act)
+	
+	'Actual Material
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Act," 	and LMO = 'M'  ",v.Local.sSQL_Material)
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Material," group by job, suffix ",v.Local.sSQL_Material)		
+	f.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL_Material, v.Local.sEstimated_Actual)	
+	f.Intrinsic.String.Split(v.Local.sEstimated_Actual,"*!*",v.Local.sEstimated_Actual)
+	
+	f.Intrinsic.Math.Mult( Variable.DataTable.Cost_DT(v.Local.iCounter).Factor!FieldValFloat, v.Local.sEstimated_Actual(0),v.Local.fHold)
+	f.Intrinsic.Math.Sub(v.Local.sEstimated_Actual(1),v.Local.fHold,v.Local.fHold)
+	
+	Function.Data.DataTable.SetValue("Cost_DT", v.Local.iCounter,"Material_Variance", v.Local.fHold)
+	
+	'Labor
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Act," 	and LMO = 'L'  ",v.Local.sSQL_Labor)
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Labor," group by job, suffix ",v.Local.sSQL_Labor)	
+	f.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL_Labor, v.Local.sEstimated_Actual)	
+	f.Intrinsic.String.Split(v.Local.sEstimated_Actual,"*!*",v.Local.sEstimated_Actual)
+	
+	f.Intrinsic.Math.Mult( Variable.DataTable.Cost_DT(v.Local.iCounter).Factor!FieldValFloat, v.Local.sEstimated_Actual(0),v.Local.fHold)
+	f.Intrinsic.Math.Sub(v.Local.sEstimated_Actual(1),v.Local.fHold,v.Local.fHold)
+	
+	Function.Data.DataTable.SetValue("Cost_DT", v.Local.iCounter,"Labor_Overhead_Var", v.Local.fHold)
+	
+	'Outside
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Act," 	and LMO = 'O'  ",v.Local.sSQL_Outside)
+	f.Intrinsic.String.Build(" {0} {1}",v.Local.sSQL_Outside," group by job, suffix ",v.Local.sSQL_Outside)	
+	f.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL_Outside, v.Local.sEstimated_Actual)	
+	f.Intrinsic.String.Split(v.Local.sEstimated_Actual,"*!*",v.Local.sEstimated_Actual)
+	
+	f.Intrinsic.Math.Mult( Variable.DataTable.Cost_DT(v.Local.iCounter).Factor!FieldValFloat, v.Local.sEstimated_Actual(0),v.Local.fHold)
+	f.Intrinsic.Math.Sub(v.Local.sEstimated_Actual(1),v.Local.fHold,v.Local.fHold)
+	
+	Function.Data.DataTable.SetValue("Cost_DT", v.Local.iCounter,"Outside_Variance", v.Local.fHold)
+	
+	f.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL, v.Local.sEstimated_Actual)	
+	f.Intrinsic.String.Split(v.Local.sEstimated_Actual,"*!*",v.Local.sEstimated_Actual)
+	Function.Data.DataTable.SetValue("Cost_DT", v.Local.iCounter,"Before_Run_Std", v.Local.sEstimated_Actual(0))
+	
+f.Intrinsic.Control.Next(v.Local.iCounter)
+
+
+Function.Data.DataTable.AddExpressionColumn("Cost_DT", "Standard_Cost", "float", "IIF(Qty_Order <> 0, (Before_Run_Std * Completed_Quantity)/Qty_Order, Before_Run_Std)")
+Function.Data.DataTable.AddExpressionColumn("Cost_DT", "Total_Variance", "float", "Material_Variance + Labor_Overhead_Var + Outside_Variance")
+Function.Data.DataTable.AddExpressionColumn("Cost_DT", "Actual_Cost", "float", "Standard_Cost + Total_Variance")
+
+
+v.Local.sMap.Set("WorkOrder@!@WorkOrder*!*Part@!@Part*!*Part_Description@!@Part_Description*!*Completed_Quantity@!@Completed_Quantity*!*Standard_Cost@!@Standard_Cost*!*Before_Run_Std@!@Before_Run_Std")
+f.Intrinsic.String.Build("{0}{1}",v.Local.sMap,"*!*Material_Variance@!@Material_Variance*!*Labor_Overhead_Var@!@Labor_Overhead_Var*!*Outside_Variance@!@Outside_Variance*!*Total_Variance@!@Total_Variance*!*Actual_Cost@!@Actual_Cost",v.Local.sMap)
+Function.Data.DataTable.SaveToDB("Cost_DT", "con", "GCG_4492_Std_Act_Cos", "",128, v.Local.sMap)
+f.Data.DataTable.Close("Cost_DT")
+'Log Report
+F.Global.BI.GetRunID(V.Global.iBIRunID)
+F.Global.BI.StartLogging(V.Global.iBIRunID,100043,-1,"",V.Global.iBILogID)
+
+'Stop Logging
+F.Global.BI.StopLogging(V.Global.iBILogID)
+
+V.Local.sParam.Set("BegDate*!*EndDate")
+F.Intrinsic.String.Build("{0}*!*{1}",v.Global.sBegDate,v.Global.sEndDate,v.Local.sVal)
+
+f.Intrinsic.UI.CloseWaitDialog
+
+F.Global.BI.RunReportPreProcessor(V.Global.iBIRunID,V.Global.iBILogID,V.Local.sParam,V.Local.sVal,"",-1,True,"",-1,"",-1,"","",V.Global.iBIRunID)
+Function.ODBC.Connection!con.Close
+f.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Pre_Proc_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4492_Standard_Actual_Cost.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Pre_Proc.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$3/20/2017 2:53:40 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$This project was quoted by Strider Smith and coded by Sisco Quiroz
+September 2016.
+
+This code will run from a custom menu item under Production>Shop Floor Control>Transactions>Transfer WIP to WIP for multiple jobs.
+Program.Sub.Comments.End
